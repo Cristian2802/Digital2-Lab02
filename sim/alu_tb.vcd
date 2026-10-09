@@ -1,0 +1,177 @@
+$date
+	Fri Oct 09 16:35:41 2026
+$end
+$version
+	Icarus Verilog
+$end
+$timescale
+	1ps
+$end
+$scope module tb_alu $end
+$var wire 4 ! result [3:0] $end
+$var reg 4 " A [3:0] $end
+$var reg 4 # B [3:0] $end
+$var reg 2 $ op [1:0] $end
+$scope module uut $end
+$var wire 4 % A [3:0] $end
+$var wire 4 & B [3:0] $end
+$var wire 2 ' op [1:0] $end
+$var reg 4 ( result [3:0] $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+$comment Show the parameter values. $end
+$dumpall
+$end
+#0
+$dumpvars
+b111 (
+b0 '
+b100 &
+b11 %
+b0 $
+b100 #
+b11 "
+b111 !
+$end
+#10000
+b1111 !
+b1111 (
+b1010 #
+b1010 &
+b101 "
+b101 %
+#20000
+b11 !
+b11 (
+b111 #
+b111 &
+b1100 "
+b1100 %
+#30000
+b0 !
+b0 (
+b1 #
+b1 &
+b1111 "
+b1111 %
+#40000
+b101 !
+b101 (
+b1 $
+b1 '
+b100 #
+b100 &
+b1001 "
+b1001 %
+#50000
+b0 !
+b0 (
+b111 #
+b111 &
+b111 "
+b111 %
+#60000
+b1110 !
+b1110 (
+b101 #
+b101 &
+b11 "
+b11 %
+#70000
+b1111 !
+b1111 (
+b1 #
+b1 &
+b0 "
+b0 %
+#80000
+b1000 !
+b1000 (
+b10 $
+b10 '
+b1010 #
+b1010 &
+b1100 "
+b1100 %
+#90000
+b101 !
+b101 (
+b101 #
+b101 &
+b1111 "
+b1111 %
+#100000
+b0 !
+b0 (
+b1111 #
+b1111 &
+b0 "
+b0 %
+#110000
+b1110 !
+b1110 (
+b11 $
+b11 '
+b1010 #
+b1010 &
+b1100 "
+b1100 %
+#120000
+b11 !
+b11 (
+b10 #
+b10 &
+b1 "
+b1 %
+#130000
+b0 !
+b0 (
+b0 #
+b0 &
+b0 "
+b0 %
+#140000
+b110 !
+b110 (
+b0 $
+b0 '
+b1010 #
+b1010 &
+b1100 "
+b1100 %
+#150000
+b10 !
+b10 (
+b1 $
+b1 '
+#160000
+b1000 !
+b1000 (
+b10 $
+b10 '
+#170000
+b1110 !
+b1110 (
+b11 $
+b11 '
+#180000
+b11 !
+b11 (
+b1 "
+b1 %
+b10 #
+b10 &
+b0 $
+b0 '
+#190000
+b110 !
+b110 (
+b100 "
+b100 %
+#200000
+b1010 !
+b1010 (
+b1000 "
+b1000 %
+#210000
