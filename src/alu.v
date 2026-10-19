@@ -1,4 +1,4 @@
-module alu (                    // Esto se supone que es el modulo de la ALU :)
+module alu (                    // Esto es el modulo de la ALU :)
     input  wire [3:0] A,       // Operando A (4 bits)
     input  wire [3:0] B,       // Operando B (4 bits)
     input  wire [1:0] op,      // Código de operación (2 bits)
