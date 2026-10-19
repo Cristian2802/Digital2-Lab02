@@ -211,9 +211,9 @@ En la tarjeta, cada pulsación produce un solo pulso y el flip-flop correspondie
 
 ## 7. Indicadores visuales (LED RGB)
 
-Para saber qué operación está seleccionada se usa el LED RGB de la Zybo Z7. Los colores de la suma y la resta son los que pide la guía para el AND y el OR el grupo escogió azul y morado, que se distinguen bien de los otros dos.
+Para saber qué operación está seleccionada se usa el LED RGB de la Zybo Z7. El color de la suma es verde y para la resta es rojo, para el AND y el OR se escogió azul y morado.
 
-| Código `op` | Operación activa | Color del LED RGB | `{R, G, B}` |
+| Código `op` | Operación | Color del LED RGB | `{R, G, B}` |
 | :---: | :--- | :--- | :---: |
 | `00` | Suma | Verde | `010` |
 | `01` | Resta | Rojo | `100` |
