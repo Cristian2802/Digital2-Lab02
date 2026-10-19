@@ -51,7 +51,6 @@ El funcionamiento se divide en tres etapas principales:
    El resultado de 4 bits calculado por la ALU se enruta directamente a los LEDs estándar de la placa. En paralelo, el valor almacenado en el `Reg_Op` alimenta un decodificador que enciende el LED RGB con el color asociado a la operación activa.
 
 **Diagrama de Bloques (Datapath)**
-**Diagrama de Bloques (Datapath)**
 
 ```mermaid
 graph LR
