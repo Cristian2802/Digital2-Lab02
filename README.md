@@ -25,14 +25,23 @@
 7. [Indicadores visuales (LED RGB)](#7-indicadores-visuales-led-rgb)
 8. [Simulaciones y Comportamiento Observado en GTKWave](#8-simulaciones-y-comportamiento-observado-en-gtkwave)
 9. [Evidencia de la implementación funcional en FPGA](#9-evidencia-de-la-implementación-funcional-en-fpga)
-10. [Conclusiones](#conclusiones)
+10. [Conclusiones](#10-conclusiones)
 
 ---
 
 ## 1. Explicación general del funcionamiento
 
+El sistema implementado en la FPGA Zybo Z7 es una **Unidad Aritmético-Lógica (ALU) de 4 bits**, el bloque de un procesador encargado de realizar las operaciones matemáticas y lógicas sobre los datos. La ALU recibe dos operandos de 4 bits (`A` y `B`) y un código de operación de 2 bits (`op`), y entrega un resultado de 4 bits según la operación seleccionada: suma, resta, AND u OR.
 
-> **[MILTON]:** Redacte aquí una descripción global de qué hace el sistema. Mencionar qué es una ALU de 4 bits, cómo el usuario ingresa datos por los switches, usa botones para guardar y seleccionar, y ve el resultado en LEDs.
+Como la tarjeta solo dispone de 4 switches, los operandos se ingresan uno a la vez a través de un mismo bus de datos:
+
+1. El usuario coloca un valor en los switches `SW[3:0]` y presiona `BTN0`; el valor se guarda en el registro del **Operando A**.
+2. Cambia la posición de los switches y presiona `BTN1`; el nuevo valor se guarda en el registro del **Operando B**. A partir de ese momento, mover los switches no altera los operandos almacenados.
+3. Cada pulsación de `BTN2` invierte el bit 0 del código de operación y cada pulsación de `BTN3` invierte el bit 1. El código queda guardado en un registro, por lo que no es necesario mantener presionados los botones.
+4. La ALU calcula de forma continua el resultado a partir de los valores almacenados y lo muestra en los LEDs `LED[3:0]`.
+5. El LED RGB indica con un color la operación activa: Verde (suma), Rojo (resta), Azul (AND) y Morado (OR).
+
+Al encender la tarjeta, todos los registros inician en cero y la operación por defecto es la suma.
 
 ---
 
@@ -85,8 +94,64 @@ graph LR
 ---
 
 ## 3. Explicación de los módulos desarrollados
->
-> **[MILTON]:** Detallar los archivos que usted hizo en Verilog (ej. `alu_4bits.v` y `top_system.v`). Explicar qué hace el Top (hardware e instanciación) y qué hace la ALU.
+
+El diseño se organizó en módulos independientes ubicados en la carpeta `src/`:
+
+| Archivo | Módulo(s) | Tipo de lógica | Función |
+| :--- | :--- | :---: | :--- |
+| `src/alu.v` | `alu` | Combinacional | Ejecuta la operación indicada por `op` sobre `A` y `B`. |
+| `src/almacenamiento.v` | `registro` | Secuencial | Registro de 4 bits con carga; se usa para el Operando A y el Operando B. |
+| | `antirrebote` | Secuencial | Sincroniza y filtra un pulsador; entrega un pulso de un ciclo por pulsación. |
+| | `control_op` | Secuencial | Registro de 2 bits que guarda el código de operación. |
+| `src/top.v` | `top` | Interconexión | Módulo superior: conecta los pines de la FPGA e instancia los demás módulos. |
+| | `rgb_decoder` | Combinacional | Convierte el código de operación en el color del LED RGB. |
+| `src/lab02.xdc` | — | — | Restricciones de pines de la Zybo Z7 (reloj, switches, botones, LEDs y LED RGB 6). |
+
+### 3.1. Módulo `alu` (lógica combinacional)
+
+Recibe `A[3:0]`, `B[3:0]` y `op[1:0]` y entrega `result[3:0]`. Se describe con un bloque `always @(*)` y una sentencia `case`, de modo que la salida se reevalúa ante cualquier cambio de las entradas y depende únicamente de sus valores actuales: no tiene reloj, no almacena operandos ni resultados y no conserva estados anteriores. El caso `default` garantiza que no se infieran *latches*.
+
+```verilog
+always @(*) begin
+    case (op)
+        2'b00:   result = A + B;   // Suma
+        2'b01:   result = A - B;   // Resta
+        2'b10:   result = A & B;   // AND bit a bit
+        2'b11:   result = A | B;   // OR bit a bit
+        default: result = 4'b0000; // Evita latches
+    endcase
+end
+```
+
+La suma y la resta se truncan a 4 bits: los desbordamientos descartan el acarreo y los resultados negativos de la resta quedan en complemento a 2 (ver sección 8).
+
+### 3.2. Módulos de `almacenamiento.v` (lógica secuencial)
+
+Agrupa todos los elementos con memoria del sistema; todos trabajan con `always @(posedge clk)`:
+
+- **`registro`**: registro de 4 bits con entrada de carga `load`. Si `load = 1` copia el dato de los switches; si `load = 0` conserva su valor (sección 5).
+- **`antirrebote`**: recibe la señal de un pulsador mecánico y entrega un pulso limpio de un solo ciclo de reloj por cada pulsación. Funciona en tres etapas:
+  1. **Sincronizador** de dos flip-flops, que evita la metaestabilidad al llevar una señal asíncrona al dominio del reloj de 125 MHz.
+  2. **Filtro de rebotes**: un contador de 21 bits exige que la entrada se mantenga estable durante 10 ms (1 250 000 ciclos) antes de aceptar el cambio.
+  3. **Detector de flanco**: genera el pulso solo cuando el estado filtrado pasa de `0` a `1`.
+- **`control_op`**: registro de 2 bits del código de operación; cada pulso invierte el bit correspondiente (sección 6).
+
+### 3.3. Módulo `top` (módulo superior)
+
+Se encarga de conectar el diseño con los recursos físicos de la FPGA. **No contiene ninguna operación aritmética ni lógica**; únicamente instancia y conecta:
+
+- Dos instancias de `registro` (`reg_A` y `reg_B`) conectadas al mismo bus `sw`, con `btn[0]` y `btn[1]` como señales de carga.
+- Dos instancias de `antirrebote` (`ar_op0` y `ar_op1`) para `btn[2]` y `btn[3]`.
+- Una instancia de `control_op` que recibe los pulsos limpios y entrega `reg_op`.
+- La `alu`, con entradas `reg_a`, `reg_b` y `reg_op`, y salida conectada directamente a `led[3:0]`.
+- El `rgb_decoder`, que recibe `reg_op` y maneja los pines `led6_r`, `led6_g` y `led6_b`.
+
+Los botones de carga (`BTN0` y `BTN1`) no necesitan antirrebote: mientras están presionados, el registro vuelve a cargar el mismo valor de los switches en cada ciclo, por lo que los rebotes no alteran el resultado. En cambio, los botones de operación invierten un bit, y sin antirrebote cada rebote (o cada ciclo de reloj con el botón presionado) produciría una inversión adicional.
+
+### 3.4. Módulo `rgb_decoder` (lógica combinacional)
+
+Decodificador incluido en `top.v` que traduce el código de operación a las tres señales `{r, g, b}` del LED RGB (ver sección 7).
+
 ---
 
 ## 4. Tabla de operaciones implementadas
@@ -116,23 +181,28 @@ El almacenamiento se implementa internamente a través de dos registros de 4 bit
 
 ### 5.2. Implementación en Código Verilog
 
-El comportamiento secuencial de captura y persistencia se describe mediante bloques `always` sincronizados por el flanco ascendente del reloj (`posedge clk`), empleando asignaciones no bloqueantes (`<=`):
+El registro se describe una sola vez en el módulo `registro` (`src/almacenamiento.v`), mediante un bloque `always` sincronizado con el flanco ascendente del reloj y una asignación no bloqueante (`<=`):
 
 ```verilog
-// Registros de almacenamiento para los operandos (4 bits cada uno)
-reg [3:0] reg_A = 4'b0000;
-reg [3:0] reg_B = 4'b0000;
-// Proceso secuencial de captura sincrónica con habilitación
-always @(posedge clk) begin
-    // Carga del Operando A al presionar BTN0
-    if (btn[0]) begin
-        reg_A <= sw;
+module registro (
+    input  wire       clk,
+    input  wire       load,           // 1 = cargar el dato, 0 = conservar
+    input  wire [3:0] d,              // dato de entrada (bus de switches)
+    output reg  [3:0] q = 4'b0000     // valor guardado (arranca en 0)
+);
+    always @(posedge clk) begin
+        if (load)
+            q <= d;     // captura el valor de los switches
+        // si load = 0 no se asigna nada: q conserva su valor
     end
-    // Carga del Operando B al presionar BTN1
-    if (btn[1]) begin
-        reg_B <= sw;
-    end
-end
+endmodule
+```
+
+En el módulo `top` se instancia dos veces, una para cada operando, ambas conectadas al mismo bus `sw`:
+
+```verilog
+registro reg_A (.clk(clk), .load(btn[0]), .d(sw), .q(reg_a));
+registro reg_B (.clk(clk), .load(btn[1]), .d(sw), .q(reg_b));
 ```
 
 ### 5.3. Principio de Aislamiento y Persistencia de Datos
@@ -166,27 +236,29 @@ Este registro actúa como una memoria de estado estable donde cada pulsador tien
 Gracias a esta arquitectura, un pulso rápido en `BTN2` o `BTN3` cambia el bit correspondiente, y el nuevo valor queda "enganchado" (*latched*) de forma permanente en los Flip-Flops.
 
 ### 6.3. Implementación en Código Verilog
-El comportamiento secuencial del registro `Reg_Op` se sintetiza dentro de un bloque `always @(posedge clk)`. El valor inicial por defecto se establece en `2'b00` (Suma), coherente con el encendido inicial del LED RGB en color verde:
+El registro `Reg_Op` se implementa en el módulo `control_op` (`src/almacenamiento.v`). El valor inicial por defecto es `2'b00` (Suma), coherente con el encendido inicial del LED RGB en color verde.
+
+Un detalle importante es que el registro **no** se controla directamente con el nivel de los botones. Con un reloj de 125 MHz, una pulsación humana (≈ 100 ms) dura más de 12 millones de ciclos; si el bit se invirtiera en cada ciclo mientras el botón está presionado, el valor final sería aleatorio. Además, el contacto mecánico rebota varias veces al presionarlo. Por eso cada botón pasa primero por el módulo `antirrebote` (sección 3.2), que entrega **un único pulso de un ciclo** por pulsación, y es ese pulso el que invierte el bit:
 
 ```verilog
-// Registro de 2 bits para almacenar la operación activa
-reg [1:0] reg_op = 2'b00; // Estado inicial: Suma (00)
-
-// Proceso secuencial para conmutar y retener el código de operación
-always @(posedge clk) begin
-    // BTN2 conmuta el bit 0 (LSB)
-    if (btn[2]) begin
-        reg_op[0] <= ~reg_op[0];
+module control_op (
+    input  wire       clk,
+    input  wire       pulso_bit0,     // pulso limpio de BTN2
+    input  wire       pulso_bit1,     // pulso limpio de BTN3
+    output reg  [1:0] op = 2'b00      // arranca en 00 (suma)
+);
+    always @(posedge clk) begin
+        if (pulso_bit0)
+            op[0] <= ~op[0];          // invierte el bit 0
+        if (pulso_bit1)
+            op[1] <= ~op[1];          // invierte el bit 1
     end
-
-    // BTN3 conmuta el bit 1 (MSB)
-    if (btn[3]) begin
-        reg_op[1] <= ~reg_op[1];
-    end
-end
+endmodule
 ```
 
-> **Comportamiento en Hardware:** Al detectar la activación del botón en el flanco ascendente de reloj, el flip-flop correspondiente actualiza su salida invirtiendo su estado previo. Cuando el usuario retira el dedo (`btn = 0`), los Flip-Flops entran en modo de **retención (*Hold*)**, conservando indefinidamente el código binario sin importar que los botones físicos se hayan liberado.
+Así, partiendo de Suma, la secuencia de operaciones es: Suma `00` → (BTN2) → Resta `01` → (BTN3) → OR `11` → (BTN2) → AND `10` → (BTN3) → Suma `00`.
+
+> **Comportamiento en Hardware:** Cada pulsación genera un solo pulso, y en el flanco de reloj en que llega el pulso el flip-flop correspondiente invierte su estado una única vez. Cuando el usuario retira el dedo (`btn = 0`), los Flip-Flops entran en modo de **retención (*Hold*)**, conservando indefinidamente el código binario sin importar que los botones físicos se hayan liberado.
 
 ### 6.4. Estabilidad del Datapath e Indicación Visual
 La persistencia que brinda `Reg_Op` proporciona dos beneficios fundamentales para el funcionamiento global del circuito:
@@ -199,18 +271,28 @@ La persistencia que brinda `Reg_Op` proporciona dos beneficios fundamentales par
 
 Para facilitar la identificación de la operación que se encuentra actualmente guardada y activa en el sistema, se configuró el LED RGB de la placa Zybo Z7. Los colores para las operaciones aritméticas cumplen con lo solicitado en la guía, mientras que los colores para las operaciones lógicas fueron seleccionados por el grupo buscando un alto contraste visual:
 
-| Operación Activa | Color del LED RGB |
-| :--- | :--- |
-| **Suma** | 🟢 Verde |
-| **Resta** | 🔴 Rojo |
-| **AND** | 🔵 Azul |
-| **OR** | 🟣 Morado |
+| Código `op` | Operación Activa | Color del LED RGB | `{R, G, B}` |
+| :---: | :--- | :--- | :---: |
+| `00` | **Suma** | 🟢 Verde | `010` |
+| `01` | **Resta** | 🔴 Rojo | `100` |
+| `10` | **AND** | 🔵 Azul | `001` |
+| `11` | **OR** | 🟣 Morado | `101` |
+
+El color se genera en el módulo combinacional `rgb_decoder` a partir del valor almacenado en `reg_op`, y se envía al LED RGB 6 (LD6) de la tarjeta, presente tanto en la Zybo Z7-10 como en la Z7-20. El morado se obtiene encendiendo simultáneamente los canales rojo y azul. Como el color depende del registro y no de los botones, permanece después de soltarlos.
 
 ---
 
 ## 8. Simulaciones y Comportamiento Observado en GTKWave
 
 *Nota: Los archivos fuente del testbench (`tb_alu.v`) y las ondas generadas (`alu_tb.vcd`) se encuentran en la carpeta `sim/` de este repositorio. Al igual que las imágenes colocadas en este apartado.*
+
+Para reproducir la simulación desde la raíz del repositorio:
+
+```bash
+iverilog -o sim/alu_tb.out src/alu.v sim/tb_alu.v
+cd sim && vvp alu_tb.out
+gtkwave alu_tb.vcd
+```
 
 El testbench fue diseñado para inyectar estímulos de forma estructurada en 6 pruebas distintas. Al analizar las ondas, se comprueba que el hardware simulado responde exactamente a las sentencias de Verilog, validando tanto la matemática como el comportamiento puramente combinacional de la ALU.
 
