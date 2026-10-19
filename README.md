@@ -30,8 +30,8 @@
 ---
 
 ## 1. Explicación general del funcionamiento
->
->ad
+
+
 > **[MILTON]:** Redacte aquí una descripción global de qué hace el sistema. Mencionar qué es una ALU de 4 bits, cómo el usuario ingresa datos por los switches, usa botones para guardar y seleccionar, y ve el resultado en LEDs.
 
 ---
