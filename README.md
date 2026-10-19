@@ -328,6 +328,8 @@ Por último, se seleccionó el OR (`op = 11`) y el LED RGB cambió a morado, el 
 
 ## 10. Conclusiones
 
-1. Separar la lógica combinacional de la secuencial facilitó mucho el diseño. Al dejar la ALU en un módulo aparte, sin reloj, quedó un bloque que solo procesa datos y que se puede reutilizar tal cual en los sistemas más grandes de los próximos laboratorios.
-2. Los registros permitieron trabajar con las pocas entradas físicas de la FPGA. Al ingresar los datos en momentos distintos, un solo bus de 4 switches fue suficiente para un sistema que en realidad necesita 10 bits (dos operandos de 4 bits y un código de 2 bits).
-3. Simular con Icarus Verilog y GTKWave antes de pasar a la tarjeta fue muy útil. Con el testbench se revisaron casos como los resultados negativos en complemento a 2 y los desbordamientos antes de sintetizar, y gracias a eso la ALU funcionó en la Zybo desde la primera prueba.
+
+1. Organizar e incluso separar la lógica combinacional de la secuencial hizo que el diseño fuera más ordenado y fácil de revisar. La ALU quedó en un módulo aparte, sin reloj ni memoria, por ende se puede reutilizar sin cambios en los laboratorios siguientes.
+2. Con los registros fue posible trabajar con las entradas que tiene la tarjeta. Como los operandos se ingresan en momentos distintos, con solo 4 switches se logró manejar los 10 bits que necesita el sistema, dos operandos de 4 bits y un código de 2 bits.
+3. Con un reloj de 125 MHz una sola pulsación dura millones de ciclos y además el botón rebota, por ende fue necesario agregar un antirrebote que entregara un solo pulso por pulsación para que el código de operación cambiara una sola vez, está condición permitió comprender que en existen escenarios donde los botones no se pueden usar directamente para cambiar un valor guardado. 
+4. La simulación en Icarus Verilog y GTKWave permitió revisar el funcionamiento de la ALU antes de pasar a la tarjeta, incluyendo casos como los desbordamientos de la suma y los resultados negativos de la resta en complemento a 2. Esto ahorró tiempo, ya que los errores se podían encontrar sin tener que sintetizar y programar la FPGA cada vez.
