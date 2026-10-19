@@ -132,7 +132,7 @@ La tarjeta Zybo Z7 solo tiene 4 switches (`SW[3:0]`), pero el sistema necesita d
 
 ### 5.1. Arquitectura de los registros
 
-Se usan dos registros de 4 bits, `Reg_A` y `Reg_B`. En la FPGA cada uno se sintetiza como 4 flip-flops tipo D que trabajan con el reloj del sistema (`clk`).
+Se usan dos registros de 4 bits, `Reg_A` y `Reg_B`. En la FPGA cada uno se implementa como 4 flip-flops tipo D que trabajan con el reloj del sistema (`clk`).
 
 Las entradas de datos de ambos registros están conectadas en paralelo al mismo bus de los switches (`SW[3:0]`). Lo que decide cuál de los dos guarda el dato es la señal de carga: `BTN0` habilita a `Reg_A` y `BTN1` habilita a `Reg_B`.
 
@@ -155,16 +155,15 @@ module registro (
 endmodule
 ```
 
-En el módulo `top` se instancia dos veces, una por operando, y las dos instancias están conectadas al mismo bus `sw`:
+En el módulo `top` se instancia dos veces, una por operando, y las dos instancias están conectadas AL MISMO bus `sw`:
 
 ```verilog
 registro reg_A (.clk(clk), .load(btn[0]), .d(sw), .q(reg_a));
 registro reg_B (.clk(clk), .load(btn[1]), .d(sw), .q(reg_b));
 ```
 
-### 5.3. Por qué los operandos no cambian al mover los switches
 
-Mientras un botón de carga no esté presionado (`btn = 0`), el registro no se actualiza: en cada flanco de reloj los flip-flops mantienen su valor ($Q_{t+1} = Q_t$), sin importar lo que pase en los switches.
+Mientras un botón de carga no esté presionado (`btn = 0`), el registro no se actualiza, en cada flanco de reloj los flip-flops mantienen su valor ($Q_{t+1} = Q_t$), sin importar lo que pase en los switches.
 
 Esto es lo que permite cargar los operandos por separado. Después de guardar A con `BTN0`, se pueden mover los switches para preparar B sin afectar a `Reg_A`, porque `BTN0` ya no está presionado. `Reg_B` solo cambia cuando se presiona `BTN1`.
 
@@ -172,19 +171,12 @@ Como resultado, la ALU siempre recibe los valores guardados en `reg_A` y `reg_B`
 
 ---
 
-## 6. Conservación del código de operación
+## 6. Código de operación
 
 Para no tener que mantener los botones presionados mientras se lee el resultado, el código de operación (`op`) también se guarda en un registro.
 
-### 6.1. El problema de usar los botones directamente
 
-Los botones de la Zybo Z7 (`BTN0` a `BTN3`) solo entregan un `1` mientras se tienen presionados; al soltarlos vuelven a `0`.
-
-Si el código de operación se conectara directamente a los botones (`op = {BTN3, BTN2}`), la operación elegida solo duraría mientras se tiene el dedo sobre el botón. Al soltarlo, el sistema volvería a `00` (suma), y para hacer un OR (`op = 11`) habría que mantener dos botones presionados al mismo tiempo mientras se miran los LEDs, lo cual no es práctico.
-
-### 6.2. Registro de 2 bits (`Reg_Op`)
-
-Para resolverlo se usa un registro de 2 bits, `Reg_Op`, formado por dos flip-flops tipo D que trabajan con el reloj `clk`. Cada botón controla uno de sus bits: `BTN2` modifica el bit menos significativo (`reg_op[0]`) y `BTN3` el más significativo (`reg_op[1]`).
+Se usa un registro de 2 bits, `Reg_Op`, formado por dos flip-flops tipo D que trabajan con el reloj `clk`. Cada botón controla uno de sus bits: `BTN2` modifica el bit menos significativo (`reg_op[0]`) y `BTN3` el más significativo (`reg_op[1]`).
 
 Así, basta con presionar y soltar `BTN2` o `BTN3` para cambiar el bit correspondiente, y el nuevo valor se queda guardado en los flip-flops.
 
@@ -214,17 +206,12 @@ Partiendo de la suma, una forma de recorrer las cuatro operaciones es: Suma `00`
 
 En la tarjeta, cada pulsación produce un solo pulso y el flip-flop correspondiente se invierte una sola vez. Al soltar el botón (`btn = 0`), los flip-flops simplemente mantienen su valor, y el código queda guardado hasta la siguiente pulsación.
 
-### 6.4. Efecto sobre la ALU y el LED RGB
-
-Como `Reg_Op` mantiene su valor, la ALU recibe siempre el mismo código y el resultado de la operación elegida (`A + B`, `A - B`, `A & B` o `A | B`) se queda fijo en los 4 LEDs.
-
-Lo mismo pasa con el LED RGB, que toma su color del valor guardado en `Reg_Op` (sección 7). En las pruebas en la tarjeta (sección 9, pasos 3 a 6) se ve que, después de presionar y soltar los botones, el LED se queda en el color de la operación seleccionada (verde, rojo, azul o morado).
 
 ---
 
 ## 7. Indicadores visuales (LED RGB)
 
-Para saber qué operación está seleccionada se usa el LED RGB de la Zybo Z7. Los colores de la suma y la resta son los que pide la guía; para el AND y el OR el grupo escogió azul y morado, que se distinguen bien de los otros dos.
+Para saber qué operación está seleccionada se usa el LED RGB de la Zybo Z7. Los colores de la suma y la resta son los que pide la guía para el AND y el OR el grupo escogió azul y morado, que se distinguen bien de los otros dos.
 
 | Código `op` | Operación activa | Color del LED RGB | `{R, G, B}` |
 | :---: | :--- | :--- | :---: |
@@ -233,23 +220,14 @@ Para saber qué operación está seleccionada se usa el LED RGB de la Zybo Z7. L
 | `10` | AND | Azul | `001` |
 | `11` | OR | Morado | `101` |
 
-El color lo genera el módulo combinacional `rgb_decoder` a partir del valor guardado en `reg_op`, y se envía al LED RGB 6 (LD6), que está tanto en la Zybo Z7-10 como en la Z7-20. El morado se obtiene encendiendo al mismo tiempo el rojo y el azul. Como el color depende del registro y no de los botones, se mantiene después de soltarlos.
+El color lo genera el módulo combinacional `rgb_decoder` a partir del valor guardado en `reg_op`, y se envía al LED RGB 6 (LD6). El morado se obtiene encendiendo al mismo tiempo el rojo y el azul. Como el color depende del registro y no de los botones, se mantiene después de soltarlos.
 
 ---
 
 ## 8. Simulaciones y Comportamiento Observado en GTKWave
 
-*Nota: el testbench (`tb_alu.v`), el archivo de ondas (`alu_tb.vcd`) y las capturas de esta sección están en la carpeta `sim/` del repositorio.*
 
-Para repetir la simulación desde la raíz del repositorio:
-
-```bash
-iverilog -o sim/alu_tb.out src/alu.v sim/tb_alu.v
-cd sim && vvp alu_tb.out
-gtkwave alu_tb.vcd
-```
-
-El testbench está organizado en 6 pruebas. En las ondas se puede ver que la ALU entrega los resultados esperados y que se comporta de forma combinacional.
+El testbench está organizado en 6 pruebas. En las ondas se observar que la ALU entrega los resultados esperados y que se comporta de forma combinacional.
 
 ### Prueba 1: Operación Suma (`op = 00`)
 
