@@ -31,31 +31,31 @@
 
 ## 1. Explicación general del funcionamiento
 
-En este laboratorio se implementó en la FPGA Zybo Z7 una Unidad Aritmético-Lógica (ALU) de 4 bits, que es el bloque de un procesador encargado de hacer las operaciones matemáticas y lógicas. La ALU recibe dos operandos de 4 bits (`A` y `B`) y un código de operación de 2 bits (`op`), y con ellos entrega un resultado de 4 bits: la suma, la resta, el AND o el OR de los operandos.
+En este informe, se implementó en la FPGA Zybo Z7 una Unidad Aritmético-Lógica (ALU) de 4 bits, que es el bloque de un procesador encargado de hacer las operaciones matemáticas y lógicas. La ALU recibe dos operandos de 4 bits (`A` y `B`) y un código de operación de 2 bits (`op`), realiza y entrega un resultado de 4 bits, que puede ser: suma, resta, AND o OR de los operandos.
 
-Como la tarjeta solo tiene 4 switches, los dos operandos se ingresan uno después del otro por el mismo bus de datos. El uso del sistema es el siguiente:
+Como la tarjeta solo tiene 4 switches, los dos operandos se ingresan uno después del otro por el mismo bus de datos. El sistema funciona de la siguiente manera:
 
-1. Se coloca un valor en los switches `SW[3:0]` y se presiona `BTN0`; ese valor queda guardado como operando A.
-2. Se cambian los switches y se presiona `BTN1`; el nuevo valor queda guardado como operando B. Desde ese momento se pueden mover los switches sin que cambien los operandos.
+1. Se coloca un valor en los switches `SW[3:0]` y se presiona `BTN0`, ese valor queda guardado como operando A.
+2. Se cambian los switches y se presiona `BTN1`, el nuevo valor queda guardado como operando B. Desde ese momento se pueden mover los switches sin que cambien los operandos.
 3. Cada vez que se presiona `BTN2` se invierte el bit 0 del código de operación, y cada vez que se presiona `BTN3` se invierte el bit 1. El código queda guardado, así que no hay que dejar los botones presionados.
 4. La ALU calcula el resultado con los valores guardados y lo muestra en los LEDs `LED[3:0]`.
 5. El LED RGB muestra un color distinto según la operación: verde para la suma, rojo para la resta, azul para el AND y morado para el OR.
 
-Al encender la tarjeta todos los registros empiezan en cero, por lo que la operación inicial es la suma.
+Al encender la tarjeta todos los registros empiezan en cero, por lo que la operación inicial es la suma (00).
 
 ---
 
-## 2. Descripción de la arquitectura propuesta
+## 2. Descripción de la arquitectura
 
-El sistema sigue la estructura de un datapath sencillo, en el que se separó la parte secuencial (los registros, que guardan información) de la parte combinacional (la ALU, que solo procesa). El funcionamiento se puede dividir en tres etapas.
+El sistema sigue la estructura de un datapath sencillo, donde se separó la parte secuencial (los registros, donde se guarda la información) de la parte combinacional (la ALU, que procesa). El funcionamiento se divide en tres etapas.
 
-### 2.1. Entrada y almacenamiento (lógica secuencial)
+### 2.1. Entrada y almacenamiento
 
 Como la FPGA tiene pocas entradas físicas, se usa el mismo bus de 4 switches para los dos operandos, pero en momentos distintos. Los switches están conectados a la vez a los registros `Reg_A` y `Reg_B`, y los botones `BTN0` y `BTN1` funcionan como señal de habilitación: al presionar uno de ellos, el registro correspondiente guarda lo que hay en los switches. Un tercer registro, `Reg_Op`, guarda el código de operación de 2 bits, que se modifica con `BTN2` y `BTN3` después de pasar por un circuito antirrebote. Todos los registros trabajan con el reloj de la tarjeta (`clk`).
 
 ### 2.2. Procesamiento (lógica combinacional)
 
-Las salidas de los registros van directamente a la ALU. La ALU no tiene reloj ni memoria: solo toma los valores que tiene en ese momento `Reg_A`, `Reg_B` y `Reg_Op` y calcula el resultado.
+Las salidas de los registros llegan a la ALU. La ALU no tiene reloj ni memoria, por ende, solo toma los valores que tiene en ese momento `Reg_A`, `Reg_B` y `Reg_Op` y calcula el resultado.
 
 ### 2.3. Salida
 
@@ -94,7 +94,7 @@ graph LR
 
 ---
 
-## 3. Explicación de los módulos desarrollados
+## 3. Módulos
 
 El diseño está dividido en varios módulos, que se encuentran en la carpeta `src/`:
 
