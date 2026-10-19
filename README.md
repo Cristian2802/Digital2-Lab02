@@ -17,11 +17,11 @@
 ## Índice
 
 1. [Explicación general del funcionamiento](#1-explicación-general-del-funcionamiento)
-2. [Descripción de la arquitectura propuesta](#2-descripción-de-la-arquitectura-propuesta)
-3. [Explicación de los módulos desarrollados](#3-explicación-de-los-módulos-desarrollados)
+2. [Descripción de la arquitectura](#2-descripción-de-la-arquitectura)
+3. [Módulos](#3-módulos)
 4. [Tabla de operaciones implementadas](#4-tabla-de-operaciones-implementadas)
 5. [Almacenamiento de operandos](#5-almacenamiento-de-operandos)
-6. [Conservación del código de operación](#6-conservación-del-código-de-operación)
+6. [Código de operación](#6-código-de-operación)
 7. [Indicadores visuales (LED RGB)](#7-indicadores-visuales-led-rgb)
 8. [Simulaciones y Comportamiento Observado en GTKWave](#8-simulaciones-y-comportamiento-observado-en-gtkwave)
 9. [Evidencia de la implementación funcional en FPGA](#9-evidencia-de-la-implementación-funcional-en-fpga)
@@ -31,12 +31,12 @@
 
 ## 1. Explicación general del funcionamiento
 
-En este informe, se implementó en la FPGA Zybo Z7 una Unidad Aritmético-Lógica (ALU) de 4 bits, que es el bloque de un procesador encargado de hacer las operaciones matemáticas y lógicas. La ALU recibe dos operandos de 4 bits (`A` y `B`) y un código de operación de 2 bits (`op`), realiza y entrega un resultado de 4 bits, que puede ser: suma, resta, AND o OR de los operandos.
+En este laboratorio se implementó en la FPGA Zybo Z7 una Unidad Aritmético-Lógica (ALU) de 4 bits, que es el bloque de un procesador encargado de hacer las operaciones matemáticas y lógicas. La ALU recibe dos operandos de 4 bits (`A` y `B`) y un código de operación de 2 bits (`op`), y con ellos calcula un resultado de 4 bits: la suma, la resta, el AND o el OR de los operandos.
 
 Como la tarjeta solo tiene 4 switches, los dos operandos se ingresan uno después del otro por el mismo bus de datos. El sistema funciona de la siguiente manera:
 
-1. Se coloca un valor en los switches `SW[3:0]` y se presiona `BTN0`, ese valor queda guardado como operando A.
-2. Se cambian los switches y se presiona `BTN1`, el nuevo valor queda guardado como operando B. Desde ese momento se pueden mover los switches sin que cambien los operandos.
+1. Se coloca un valor en los switches `SW[3:0]` y se presiona `BTN0` y ese valor queda guardado como operando A.
+2. Se cambian los switches y se presiona `BTN1` y el nuevo valor queda guardado como operando B. Desde ese momento se pueden mover los switches sin que cambien los operandos.
 3. Cada vez que se presiona `BTN2` se invierte el bit 0 del código de operación, y cada vez que se presiona `BTN3` se invierte el bit 1. El código queda guardado, así que no hay que dejar los botones presionados.
 4. La ALU calcula el resultado con los valores guardados y lo muestra en los LEDs `LED[3:0]`.
 5. El LED RGB muestra un color distinto según la operación: verde para la suma, rojo para la resta, azul para el AND y morado para el OR.
@@ -96,7 +96,7 @@ graph LR
 
 ## 3. Módulos
 
-El la tabla se resume, la función de los módulos implementacdos:
+En la tabla se resume la función de los módulos implementados:
 
 
 | Módulo | Función |
@@ -111,7 +111,10 @@ El la tabla se resume, la función de los módulos implementacdos:
 La ALU es el único módulo que hace operaciones, y es puramente combinacional, no usa reloj y tampoco guarda ningún valor. Todos los elementos con memoria (`registro`, `antirrebote` y `control_op`) están en `almacenamiento.v`, y el módulo `top` solo instancia y conecta los demás módulos con los pines de la FPGA.
 
 El módulo `antirrebote` solo se usa en los botones de operación (`BTN2` y `BTN3`). Sincroniza la señal del botón con el reloj, ignora los cambios que duren menos de 10 ms y entrega un único pulso por pulsación. Los botones de carga (`BTN0` y `BTN1`) no lo necesitan, porque mientras están presionados el registro vuelve a cargar el mismo valor de los switches y los rebotes no cambian nada.
-Una explicación de cada línea de el código se encuentra, dentro de los comentarios de del código en la carpeta /src.
+
+La explicación de cada línea está en los comentarios del código, en la carpeta `src/`.
+
+---
 
 ## 4. Tabla de operaciones implementadas
 
@@ -155,7 +158,7 @@ module registro (
 endmodule
 ```
 
-En el módulo `top` se instancia dos veces, una por operando, y las dos instancias están conectadas AL MISMO bus `sw`:
+En el módulo `top` se instancia dos veces, una por operando, y las dos instancias están conectadas al mismo bus `sw`:
 
 ```verilog
 registro reg_A (.clk(clk), .load(btn[0]), .d(sw), .q(reg_a));
@@ -184,7 +187,7 @@ Así, basta con presionar y soltar `BTN2` o `BTN3` para cambiar el bit correspon
 
 `Reg_Op` está implementado en el módulo `control_op` (`src/almacenamiento.v`). Su valor inicial es `2'b00` (suma), por eso al encender la tarjeta el LED RGB aparece en verde.
 
-El registro no se controla directamente con el nivel de los botones. Con un reloj de 125 MHz, una pulsación normal (unos 100 ms) dura más de 12 millones de ciclos, y si el bit se invirtiera en cada ciclo mientras el botón está presionado, el valor final sería aleatorio. Además, los contactos del botón rebotan al presionarlo. Por eso cada botón pasa primero por el módulo `antirrebote` (sección 3.2), que entrega un solo pulso de un ciclo por pulsación, y es ese pulso el que invierte el bit:
+El registro no se controla directamente con el nivel de los botones. Con un reloj de 125 MHz, una pulsación normal (unos 100 ms) dura más de 12 millones de ciclos, y si el bit se invirtiera en cada ciclo mientras el botón está presionado, el valor final sería aleatorio. Además, los contactos del botón rebotan al presionarlo. Por eso cada botón pasa primero por el módulo `antirrebote` (sección 3), que entrega un solo pulso de un ciclo por pulsación, y es ese pulso el que invierte el bit:
 
 ```verilog
 module control_op (
@@ -211,7 +214,7 @@ En la tarjeta, cada pulsación produce un solo pulso y el flip-flop correspondie
 
 ## 7. Indicadores visuales (LED RGB)
 
-Para saber qué operación está seleccionada se usa el LED RGB de la Zybo Z7. El color de la suma es verde y para la resta es rojo, para el AND y el OR se escogió azul y morado.
+Para saber qué operación está seleccionada se usa el LED RGB de la Zybo Z7. La suma se indica en verde y la resta en rojo, para el AND y el OR el grupo escogió azul y morado.
 
 | Código `op` | Operación | Color del LED RGB | `{R, G, B}` |
 | :---: | :--- | :--- | :---: |
@@ -227,7 +230,7 @@ El color lo genera el módulo combinacional `rgb_decoder` a partir del valor gua
 ## 8. Simulaciones y Comportamiento Observado en GTKWave
 
 
-El testbench está organizado en 6 pruebas. En las ondas se observar que la ALU entrega los resultados esperados y que se comporta de forma combinacional.
+El testbench está organizado en 6 pruebas. En las ondas se observa que la ALU entrega los resultados esperados y que se comporta de forma combinacional.
 
 ### Prueba 1: Operación Suma (`op = 00`)
 
