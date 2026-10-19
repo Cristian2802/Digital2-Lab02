@@ -1,24 +1,7 @@
-// ============================================================
-// almacenamiento.v - Elementos secuenciales del sistema
-// Lab02 - Electrónica Digital 2
-//
-// Contiene los módulos con memoria (flip-flops). Todos usan
-// always @(posedge clk). La ALU NO está aquí: es combinacional
-// y vive en alu.v.
-//
-//   registro     -> guarda el Operando A o el Operando B
-//   antirrebote  -> limpia un botón y entrega 1 pulso por pulsación
-//   control_op   -> guarda el código de operación de 2 bits
-// ============================================================
-
-
-// ============================================================
-// registro - Registro de 4 bits con carga (load)
-//
 // En cada flanco de subida del reloj:
-//   load = 1 -> copia el dato de entrada (switches)
-//   load = 0 -> conserva el valor anterior (memoria)
-// ============================================================
+//  load = 1 -> copia el dato de entrada (switches)
+//  load = 0 -> conserva el valor anterior (memoria)
+
 module registro (
     input  wire       clk,            // reloj
     input  wire       load,           // 1 = cargar el dato, 0 = conservar
@@ -29,7 +12,7 @@ module registro (
     always @(posedge clk) begin
         if (load)
             q <= d;     // captura el valor de los switches
-        // si load = 0 no se asigna nada: q conserva su valor
+        // si load = 0 no se asigna nada
     end
 
 endmodule
@@ -37,16 +20,7 @@ endmodule
 
 // ============================================================
 // antirrebote - Antirrebote y detector de pulsación
-//
-// Recibe la señal "sucia" de un botón mecánico y entrega un
-// pulso limpio de UN solo ciclo de reloj cada vez que el botón
-// se presiona. Una pulsación = un pulso, sin importar el rebote
-// ni cuánto tiempo se mantenga presionado.
-//
-//   1. Sincronizador: pasa el botón por dos flip-flops.
-//   2. Filtro: acepta un cambio solo si dura 10 ms estable.
-//   3. Detector de flanco: pulso cuando el botón limpio pasa 0 -> 1.
-// ============================================================
+
 module antirrebote (
     input  wire clk,          // reloj de 125 MHz
     input  wire btn,          // botón físico (con rebotes)
@@ -91,16 +65,12 @@ endmodule
 
 // ============================================================
 // control_op - Registro del código de operación
-//
-// Cada pulso invierte (0 <-> 1) el bit correspondiente:
-//   pulso_bit0 (desde BTN2) -> invierte op[0]
-//   pulso_bit1 (desde BTN3) -> invierte op[1]
-// El valor se conserva después de soltar los botones.
-// ============================================================
+
+
 module control_op (
     input  wire       clk,
-    input  wire       pulso_bit0,     // pulso limpio de BTN2
-    input  wire       pulso_bit1,     // pulso limpio de BTN3
+    input  wire       pulso_bit0,     // pulso de BTN2
+    input  wire       pulso_bit1,     // pulso  de BTN3
     output reg  [1:0] op = 2'b00      // arranca en 00 (suma)
 );
 
