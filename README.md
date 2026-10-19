@@ -96,64 +96,22 @@ graph LR
 
 ## 3. Módulos
 
-El diseño está dividido en varios módulos, que se encuentran en la carpeta `src/`:
+El la tabla se resume, la función de los módulos implementacdos:
 
-| Archivo | Módulo(s) | Tipo de lógica | Función |
-| :--- | :--- | :---: | :--- |
-| `src/alu.v` | `alu` | Combinacional | Hace la operación indicada por `op` con `A` y `B`. |
-| `src/almacenamiento.v` | `registro` | Secuencial | Registro de 4 bits con carga; se usa para el operando A y para el operando B. |
-| | `antirrebote` | Secuencial | Limpia la señal de un botón y entrega un pulso de un ciclo por cada pulsación. |
-| | `control_op` | Secuencial | Registro de 2 bits que guarda el código de operación. |
-| `src/top.v` | `top` | Interconexión | Módulo superior: conecta los pines de la FPGA con los demás módulos. |
-| | `rgb_decoder` | Combinacional | Convierte el código de operación en el color del LED RGB. |
-| `src/lab02.xdc` | — | — | Asignación de pines de la Zybo Z7 (reloj, switches, botones, LEDs y LED RGB 6). |
 
-### 3.1. Módulo `alu` (lógica combinacional)
+| Módulo | Función |
+| :--- | :--- |
+| `alu` | Hace la operación indicada por `op` con `A` y `B`. |
+| `registro` | Registro de 4 bits con carga; se usa para el operando A y para el operando B. |
+| `antirrebote` | Limpia la señal de un botón y entrega un pulso de un ciclo por cada pulsación. |
+| `control_op` | Registro de 2 bits que guarda el código de operación. |
+| `top` | Módulo superior: conecta los pines de la FPGA con los demás módulos. |
+| `rgb_decoder` | Convierte el código de operación en el color del LED RGB. |
 
-Tiene como entradas `A[3:0]`, `B[3:0]` y `op[1:0]`, y como salida `result[3:0]`. Está escrito con un bloque `always @(*)` y un `case`, así que la salida se recalcula cada vez que cambia alguna entrada y depende solo de los valores actuales. No usa reloj, no guarda operandos ni resultados y no recuerda estados anteriores. El `default` del `case` evita que la herramienta de síntesis infiera *latches*.
+La ALU es el único módulo que hace operaciones, y es puramente combinacional, no usa reloj y tampoco guarda ningún valor. Todos los elementos con memoria (`registro`, `antirrebote` y `control_op`) están en `almacenamiento.v`, y el módulo `top` solo instancia y conecta los demás módulos con los pines de la FPGA.
 
-```verilog
-always @(*) begin
-    case (op)
-        2'b00:   result = A + B;   // Suma
-        2'b01:   result = A - B;   // Resta
-        2'b10:   result = A & B;   // AND bit a bit
-        2'b11:   result = A | B;   // OR bit a bit
-        default: result = 4'b0000; // Evita latches
-    endcase
-end
-```
-
-Como la salida es de 4 bits, en la suma se pierde el acarreo cuando hay desbordamiento, y en la resta los resultados negativos quedan en complemento a 2 (ver sección 8).
-
-### 3.2. Módulos de `almacenamiento.v` (lógica secuencial)
-
-En este archivo están todos los elementos con memoria del sistema, y todos funcionan con `always @(posedge clk)`:
-
-- `registro`: registro de 4 bits con una entrada de carga `load`. Cuando `load = 1` copia el valor de los switches y cuando `load = 0` mantiene el valor que tenía (sección 5).
-- `antirrebote`: recibe la señal de un botón y entrega un pulso de un solo ciclo de reloj por cada vez que se presiona. Lo hace en tres pasos:
-  1. Pasa la señal por dos flip-flops en serie (sincronizador), para evitar problemas de metaestabilidad, ya que el botón no está sincronizado con el reloj de 125 MHz.
-  2. Filtra los rebotes con un contador de 21 bits: un cambio en el botón solo se acepta si se mantiene estable durante 10 ms (1 250 000 ciclos).
-  3. Genera el pulso solo cuando la señal ya filtrada pasa de `0` a `1`.
-- `control_op`: registro de 2 bits para el código de operación; cada pulso invierte el bit que le corresponde (sección 6).
-
-### 3.3. Módulo `top` (módulo superior)
-
-Este módulo conecta el diseño con los pines físicos de la FPGA. No tiene ninguna operación aritmética ni lógica; solo instancia y conecta los demás módulos:
-
-- Dos `registro` (`reg_A` y `reg_B`), conectados al mismo bus `sw`, que se cargan con `btn[0]` y `btn[1]` respectivamente.
-- Dos `antirrebote` (`ar_op0` y `ar_op1`) para `btn[2]` y `btn[3]`.
-- Un `control_op`, que recibe los pulsos de los antirrebotes y entrega `reg_op`.
-- La `alu`, que recibe `reg_a`, `reg_b` y `reg_op`, y cuya salida va directo a `led[3:0]`.
-- El `rgb_decoder`, que recibe `reg_op` y maneja los pines `led6_r`, `led6_g` y `led6_b`.
-
-A los botones de carga (`BTN0` y `BTN1`) no se les puso antirrebote porque no lo necesitan: mientras están presionados, el registro carga una y otra vez el mismo valor de los switches, así que los rebotes no cambian nada. Con los botones de operación pasa lo contrario, porque cada pulsación invierte un bit; sin el antirrebote, cada rebote (y cada ciclo de reloj con el botón presionado) volvería a invertirlo.
-
-### 3.4. Módulo `rgb_decoder` (lógica combinacional)
-
-Es un decodificador, incluido en `top.v`, que convierte el código de operación en las tres señales `{r, g, b}` del LED RGB (ver sección 7).
-
----
+El módulo `antirrebote` solo se usa en los botones de operación (`BTN2` y `BTN3`). Sincroniza la señal del botón con el reloj, ignora los cambios que duren menos de 10 ms y entrega un único pulso por pulsación. Los botones de carga (`BTN0` y `BTN1`) no lo necesitan, porque mientras están presionados el registro vuelve a cargar el mismo valor de los switches y los rebotes no cambian nada.
+Una explicación de cada línea de el código se encuentra, dentro de los comentarios de del código en la carpeta /src.
 
 ## 4. Tabla de operaciones implementadas
 
@@ -170,7 +128,7 @@ En la siguiente tabla están las operaciones que puede hacer la ALU. Cada una se
 
 ## 5. Almacenamiento de operandos
 
-La tarjeta Zybo Z7 solo tiene 4 switches (`SW[3:0]`), pero el sistema necesita dos operandos de 4 bits (`A` y `B`). Por eso los operandos se ingresan en momentos distintos y cada uno se guarda en un registro con habilitación de carga.
+La tarjeta Zybo Z7 solo tiene 4 switches (`SW[3:0]`), pero el sistema necesita dos operandos de 4 bits (`A` y `B`). Por eso los operandos se ingresan en momentos distintos y cada uno se guarda en un registro.
 
 ### 5.1. Arquitectura de los registros
 
