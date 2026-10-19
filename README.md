@@ -180,7 +180,7 @@ Se usa un registro de 2 bits, `Reg_Op`, formado por dos flip-flops tipo D que tr
 
 Así, basta con presionar y soltar `BTN2` o `BTN3` para cambiar el bit correspondiente, y el nuevo valor se queda guardado en los flip-flops.
 
-### 6.3. Implementación en Verilog
+### 6.1. Implementación en Verilog
 
 `Reg_Op` está implementado en el módulo `control_op` (`src/almacenamiento.v`). Su valor inicial es `2'b00` (suma), por eso al encender la tarjeta el LED RGB aparece en verde.
 
@@ -265,13 +265,13 @@ Se probaron otras 3 combinaciones para la operación OR bit a bit:
 
 - `1100 | 1010` da `1110`. También se probaron `0001 | 0010 = 0011` y `0000 | 0000 = 0000`.
 
-### Prueba 5: Mismos operandos, cambio dinámico de operación
+### Prueba 5: Mismos operandos, cambio de operación
 
 ![Prueba 5 - Cambio Op](sim/Simulación_A_B_Fijos.png)
 
 En esta prueba se dejaron fijos los operandos `A = 1100` y `B = 1010` y solo se cambió `op`, pasando por `00`, `01`, `10` y `11`. En la onda se ve que `result` cambia en el mismo instante que `op` (`0110`, `0010`, `1000` y `1110`). Como no hay retardo ni se espera ningún flanco de reloj, esto confirma que la ALU es combinacional, como lo pide la sección 4.2 de la guía.
 
-### Prueba 6: Operador fijo, cambio dinámico de operando A
+### Prueba 6: Operador fijo, cambio de operando A
 
 ![Prueba 6 - Cambio A](sim/Simulación_OP_Fijo.png)
 
